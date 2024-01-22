@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en-US"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+<title>Invidious</title>
+
+    <link rel="apple-touch-icon" sizes="180x180" href="https://yewtu.be/apple-touch-icon.png?v=e0a7e0c">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://yewtu.be/favicon-32x32.png?v=e0a7e0c">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://yewtu.be/favicon-16x16.png?v=e0a7e0c">
+    <link rel="manifest" href="https://yewtu.be/site.webmanifest?v=e0a7e0c">
+    <link rel="mask-icon" href="https://yewtu.be/safari-pinned-tab.svg?v=e0a7e0c" color="#575757">
+    <meta name="msapplication-TileColor" content="#575757">
+    <meta name="theme-color" content="#575757">
+    <link title="Invidious" type="application/opensearchdescription+xml" rel="search" href="https://yewtu.be/opensearch.xml">
+    <link rel="stylesheet" href="pubarch_files/pure-min.css">
+    <link rel="stylesheet" href="pubarch_files/grids-responsive-min.css">
+    <link rel="stylesheet" href="pubarch_files/ionicons.min.css">
+    <link rel="stylesheet" href="pubarch_files/default.css">
+    <script src="pubarch_files/_helpers.js"></script><script>/******/ (() => { // webpackBootstrap
+/******/ 	"use strict";
+var __webpack_exports__ = {};
+
+;// CONCATENATED MODULE: ../core/dist/flash-identifiers.js
+const FLASH_MIMETYPE = "application/x-shockwave-flash";
+const FUTURESPLASH_MIMETYPE = "application/futuresplash";
+const FLASH7_AND_8_MIMETYPE = "application/x-shockwave-flash2-preview";
+const FLASH_MOVIE_MIMETYPE = "application/vnd.adobe.flash.movie";
+const FLASH_ACTIVEX_CLASSID = "clsid:D27CDB6E-AE6D-11cf-96B8-444553540000";
+
+;// CONCATENATED MODULE: ../core/dist/plugin-polyfill.js
+
+/**
+ * Replacement object for `MimeTypeArray` that lets us install new fake mime
+ * types.
+ *
+ * Unlike plugins we can at least enumerate mime types in Firefox, so we don't
+ * lose data.
+ *
+ * We also expose a method called `install` which adds a new plugin. This is
+ * used to falsify Flash detection. If the existing `navigator.mimeTypes` has an
+ * `install` method, you should not use `RuffleMimeTypeArray` as some other
+ * plugin emulator is already present.
+ */
+class RuffleMimeTypeArray {
+    constructor(mimeTypes) {
+        this.__mimeTypes = [];
+        this.__namedMimeTypes = {};
+        if (mimeTypes) {
+            for (let i = 0; i < mimeTypes.length; i++) {
+                this.install(mimeTypes[i]);
+            }
+        }
+    }
+    /**
+     * Install a MIME Type into the array.
+     *
+     * @param mimeType The mime type to install
+     */
+    install(mimeType) {
+        const index = this.__mimeTypes.length;
+        this.__mimeTypes.push(mimeType);
+        this.__namedMimeTypes[mimeType.type] = mimeType;
+        this[mimeType.type] = mimeType;
+        this[index] = mimeType;
+    }
+    item(index) {
+        // This behavior is done to emulate a 32-bit uint,
+        // which browsers use.
+        return this.__mimeTypes[index >>> 0];
+    }
+    namedItem(name) {
+        return this.__namedMimeTypes[name];
+    }
+    get length() {
+        return this.__mimeTypes.length;
+    }
+    [Symbol.iterator]() {
+        return this.__mimeTypes[Symbol.iterator]();
+    }
+}
+/**
+ * Equivalent object to `Plugin` that allows us to falsify plugins.
+ */
+class RufflePlugin extends RuffleMimeTypeArray {
+    constructor(name, description, filename) {
+        super();
+        this.name = name;
+        this.description = description;
+        this.filename = filename;
+    }
+}
+/**
+ * Replacement object for `PluginArray` that lets us install new fake plugins.
+ *
+ * This object needs to wrap the native plugin array, since the user might have
+ * actual plugins installed. Firefox doesn't let us enumerate the array, though,
+ * which has some consequences. Namely, we can't actually perfectly wrap the
+ * native plugin array, at least unless there's some secret "unresolved object
+ * property name handler" that I've never known before in JS...
+ *
+ * We can still wrap `namedItem` perfectly at least.
+ *
+ * We also expose a method called `install` which adds a new plugin. This is
+ * used to falsify Flash detection. If the existing `navigator.plugins` has an
+ * `install` method, you should not use `RufflePluginArray` as some other plugin
+ * emulator is already present.
+ */
+class RufflePluginArray {
+    constructor(plugins) {
+        this.__plugins = [];
+        this.__namedPlugins = {};
+        for (let i = 0; i < plugins.length; i++) {
+            this.install(plugins[i]);
+        }
+    }
+    install(plugin) {
+        const index = this.__plugins.length;
+        this.__plugins.push(plugin);
+        this.__namedPlugins[plugin.name] = plugin;
+        this[plugin.name] = plugin;
+        this[index] = plugin;
+    }
+    item(index) {
+        // This behavior is done to emulate a 32-bit uint,
+        // which browsers use. Cloudflare's anti-bot
+        // checks rely on this.
+        return this.__plugins[index >>> 0];
+    }
+    namedItem(name) {
+        return this.__namedPlugins[name];
+    }
+    refresh() {
+        // Nothing to do, we just need to define the method.
+    }
+    [Symbol.iterator]() {
+        return this.__plugins[Symbol.iterator]();
+    }
+    get length() {
+        return this.__plugins.length;
+    }
+}
+/**
+ * A fake plugin designed to trigger Flash detection scripts.
+ */
+const FLASH_PLUGIN = new RufflePlugin("Shockwave Flash", "Shockwave Flash 32.0 r0", "ruffle.js");
+FLASH_PLUGIN.install({
+    type: FUTURESPLASH_MIMETYPE,
+    description: "Shockwave Flash",
+    suffixes: "spl",
+    enabledPlugin: FLASH_PLUGIN,
+});
+FLASH_PLUGIN.install({
+    type: FLASH_MIMETYPE,
+    description: "Shockwave Flash",
+    suffixes: "swf",
+    enabledPlugin: FLASH_PLUGIN,
+});
+FLASH_PLUGIN.install({
+    type: FLASH7_AND_8_MIMETYPE,
+    description: "Shockwave Flash",
+    suffixes: "swf",
+    enabledPlugin: FLASH_PLUGIN,
+});
+FLASH_PLUGIN.install({
+    type: FLASH_MOVIE_MIMETYPE,
+    description: "Shockwave Flash",
+    suffixes: "swf",
+    enabledPlugin: FLASH_PLUGIN,
+});
+/**
+ * Install a fake plugin such that detectors will see it in `navigator.plugins`.
+ *
+ * This function takes care to check if the existing implementation of
+ * `navigator.plugins` already accepts fake plugin entries. If so, it will use
+ * that version of the plugin array. This allows the plugin polyfill to compose
+ * across multiple plugin emulators with the first emulator's polyfill winning.
+ *
+ * @param plugin The plugin to install
+ */
+function installPlugin(plugin) {
+    if (!("install" in navigator.plugins) || !navigator.plugins["install"]) {
+        Object.defineProperty(navigator, "plugins", {
+            value: new RufflePluginArray(navigator.plugins),
+            writable: false,
+        });
+    }
+    const plugins = navigator.plugins;
+    plugins.install(plugin);
+    if (plugin.length > 0 &&
+        (!("install" in navigator.mimeTypes) || !navigator.mimeTypes["install"])) {
+        Object.defineProperty(navigator, "mimeTypes", {
+            value: new RuffleMimeTypeArray(navigator.mimeTypes),
+            writable: false,
+        });
+    }
+    const mimeTypes = navigator.mimeTypes;
+    for (let i = 0; i < plugin.length; i += 1) {
+        mimeTypes.install(plugin[i]);
+    }
+}
+
+;// CONCATENATED MODULE: ./src/plugin-polyfill.ts
+// This file is compiled and then injected into content.ts's compiled form.
+
+installPlugin(FLASH_PLUGIN);
+
+/******/ })()
+;</script><script charset="utf-8" src="pubarch_files/ruffle.js"></script>
+</head>
+
+
+
+<body class="no-theme">
+    <span style="display:none" id="dark_mode_pref"></span>
+    <div class="pure-g">
+        <div class="pure-u-1 pure-u-md-2-24"></div>
+        <div class="pure-u-1 pure-u-md-20-24" id="contents">
+            <div class="pure-g navbar h-box">
+                
+                    <div class="pure-u-1 pure-u-md-4-24">
+                        <a href="https://yewtu.be/" class="index-link pure-menu-heading">Invidious</a>
+                    </div>
+                    <div class="pure-u-1 pure-u-md-12-24 searchbar">
+                        <form class="pure-form" action="/search" method="get">
+	<fieldset>
+		<input type="search" id="searchbox" autocorrect="off" autocapitalize="none" spellcheck="false" name="q" placeholder="search" title="search">
+	</fieldset>
+</form>
+
+                    </div>
+                
+
+                <div class="pure-u-1 pure-u-md-8-24 user-field">
+                    
+                        <div class="pure-u-1-3">
+                            <a id="toggle_theme" href="javascript:void(0)" class="pure-menu-heading">
+                                
+                                    <i class="icon ion-ios-moon"></i>
+                                
+                            </a>
+                        </div>
+                        <div class="pure-u-1-3">
+                            <a title="Preferences" href="https://yewtu.be/preferences?referer=%2Fpost%2FUgkxSAaZtrKldyb1k8H3pKsRd0aa-JiD38wW%3Fucid%3DUC_jtsGelurRAt-9Xq94uXwQ" class="pure-menu-heading">
+                                <i class="icon ion-ios-cog"></i>
+                            </a>
+                        </div>
+                        
+                            <div class="pure-u-1-3">
+                                <a href="https://yewtu.be/login?referer=%2Fpost%2FUgkxSAaZtrKldyb1k8H3pKsRd0aa-JiD38wW%3Fucid%3DUC_jtsGelurRAt-9Xq94uXwQ" class="pure-menu-heading">
+                                    Log in
+                                </a>
+                            </div>
+                        
+                    
+                </div>
+            </div>
+
+            
+
+            
+
+<div>
+    <div id="post" class="comments post-comments">
+        <div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/@FrozenMermaid666">Freya Trueandonlyqueengoddess Daethtoallimpostors</a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">It’s an obvious FACT that I am The Divine Being, yah _id little _k — that’s why I am the only pure being with RADIANCE aka light around my body, yah bI!nd _k! And I clearly know what I am! And the only ones with d2Ius!ons are yah _ and the other humonztr _ that ARE all d!rty aka !mpure by design, which is why they naturally cause repuIs!on and have harrible smeIIs DUH! Go _ _ and quyt leaving _ comments on my page! _ch!</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <a href="https://www.youtube.com/channel/UC_jtsGelurRAt-9Xq94uXwQ/community?lb=UgkxSAaZtrKldyb1k8H3pKsRd0aa-JiD38wW" title="YouTube comment permalink">[YT]</a>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div>
+    </div>
+
+    
+    <br>
+
+    <div id="comments" class="comments post-comments">             <div>                 <h3>                     <a href="javascript:void(0)">[ − ]</a>                     View 19 comments                  </h3>                 <b>                  </b>             </div>             <div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/channels4_profile.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="" href="https://yewtu.be/channel/UCOky8yUepVzTFgeBjWomWqQ">@bilingualistic8514</a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Excuse me, why are you the "Divine being?"<br><br>Asking because i recently saw another bunch of people claiming that too, so i just wanted to know, by pure curiosity, what makes you different from the other people?</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    <div id="replies" class="pure-g">
+  <div class="pure-u-1-24"></div>
+  <div class="pure-u-23-24"><p><a href="javascript:void(0)" data-sub-text="Hide replies" data-inner-text="Show replies">Hide replies</a></p><div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">It’s not others, but my other yts! I have 5 yts, so I comment using all my yts! I am the only being of divine nature, which is obvious — I am the special / absolute / supreme being and the pure / radiant / unique being and the innocent / Holy / sainted being etc aka The Saint / The Holy Being / The Divine / The Angel / The God(dess) etc aka The Leader / The Supreme Leader etc, myself being the only being possessing the radiance and the purity and the totally dominant personality etc, which are unique and divine qualities that no humn has, and my pure protectors aka the alphas are also sort of divine and special, and we are like one being in multiple bodies, so they also possess most of the qualities that I possess! can’t imagine humnz that would say such things, since humnz are the exact opposite of Divine / other big terms! And, any impztr that would say such things / trying to steal my RIGHTFUL pIc is to get _ in TNW!</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Besides, I am the only being who truly is different and unique in every way, and I also have the unlimited way of thinking that is multi-dimensional and unique, and I also possess the unique complexity — while humnz are all the same, and they have the same type of limited thinking, including the humnz that try to convince themselves that they’re ‘different’ etc, and they are all a simple being by design! And most humnz are impztrz by design, so they all want to be ‘the best’ or want to convince themselves that they are ‘the best’ etc, while I am the one being who actually IS the best and everything else that I state(s) and the most complex being, which is why I am federally protected and the most protected being since day one for my importance / for what only I represent! I don’t even belong in this wrong world that is imperfect and in5ane etc, and I was never meant to exist in such wrong world where I was crueIIy ferced into existence without my consent and against my will!</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">I am a flower etc and a bird and a bee and a butterfly etc trapped in a humn-shaped body — that’s why I have the unique qualities that flowers / plants etc and birds / bees / butterflies etc possess, such as the purity / total purity and the good smeIIs / no smeIIs and the extreme sensitivity and the attractiveness (to attract means to be pure, which makes others be naturally drawn to / attracted to me) and, my way of thinking is also the exact opposite of humn’s’ way of thinking! My protectors also possess most of the qualities that I possess, so they do not identify as humnz either! So we cannot be considered humnz! And, we cannot be considered mammaIz! Besides, I also possess the unique radiance because I am The Goddess / The Princess / The Queen / The Lady / The Star etc aka The Leader / The Supreme Leader, which also shows that I am the opposite of humnz — I am the one being who stands out in every way, so I always stand out naturally because I have the light / radiance around my body!</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">And this world is a wrong world created as a test by the 2nd world creator — every logical observation indicates that our theory about this being a miniature world created as a test by him as the exact opposite of what the perfect world would have been (to observe different variables / outcomes) makes perfect sense! Technically, it is totally possible that my essence was trapped here on purpose, which explains why I always knew that I do not belong here, and why I have always had the feeling that I always existed and that I know that I existed before existing in this body, even though I cannot remember anything clearly, yet it still feels like the memories are there in a way! And it also explains why he created the dinosaurs and then _ed them in very crueI ways because they were so huge and would’ve stomped and _ed everything, and then he decided to create humnz, and only allowed animaIs that were not that huge, which was not random — nothing seems random because it isn’t!</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Even time might work differently in The Outside, so a hundred years in this world may only be 1 month or 1 year in The Outside, which explains why he put smaller animals like insects here, for humnz to observe that time contracts for smaller animaIs — to an insect, a day may seem like 10 humn years... And it makes sense that he can also influence what humnz and other animaIz do or think, since it’s also possible in this world... And maybe he realized that it was an universal error, long after he created this wrong world and the humnz and the other mammaIz, so it explains why he created the agents, that would observe and come to these conclusions, since they are the only ones that can break the vicious cycle — they have the power in this world, and it is to be given to me after The Great Reset in TNW!</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">So there are too many things that humnz do not know and do not understand etc, and many different perspectives — so being something else while trapped in a humn-like body is more about the qualities that I possess that are the opposite of how humnz are, and it also includes the ways of thinking, which are also the opposite of humnz’, and I’m pretty sure even my body composition is different in a way because my pea doesn’t even smeII or it smeIIs like rice dessert, so how could such thing be explained if I was a humn? And my _ also does not _ the room, unlike the _ of humnz. So it is true that I have the qualities of birds, especially when it comes to body composition — birds’ doo-doo doesn’t smeII / doesn’t have a harrible smeII either, and bees make honey etc, which is sweet, so I am more similar to birds and bees etc!</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Even my voice / vocal cords are more similar to a bird’s than it is to a humn’s because I have the highest voice in the world (coloratura sopranino, which is higher than high soprano, and I also am the only being with a 100 percent coloratura subtype, even though I also possess the chameleon voice ability to imitate other vocal subtypes as well) with the widest natural range in every vocal register, and my tonal purity is 100 percent pure (it means that my voice has no undertones etc, and it’s only one sound when I sing the note) aka the crystalline voice, and my timbre sounds more similar to the timbre of birds when I sing in head voice (coloratura) and it’s also similar to instrument sounds, and I have the voice that has all tonal nuances and colors, including the rosegold tone and the glass / silver tone etc that are only found in my voice and the green tone / color that is extremely rare, which makes me very similar to the colorful butterfly, as I represent the colorful being!</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">I also am the most complex being, and a humn could never be so complex — humnz are a simple being by design, so this is also something that is an opposite of what I represent... My mind in unique, and I am the unique being — I see things / patterns in my mind and I think ideas that cannot even be explained because they are not of this world... I am the logical being, which is also an opposite of how humnz are — humnz have always based their actions on instincts and fears and habits etc, while we logical beings do not do things that are based on instincts, and we always use logic and question things, but maybe my protectors are more logical than me because I used to do wrong things in childhood, but still, I still knew that things such as bngg / btg are beyond wrong even in childhood, so I’ve always been anti btg etc!</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">We have the most logical theories, including the theory about the first world that is a timeless domain where time simply does not exist and that is completely different from the way this wrong world works, so this would explain why I think such ideas that I cannot explain in humn language / using humn words and I cannot find anything in this world that would be similar to them — the first world and the first world creator appeared due to movement where chemical elements came in contact with each other and created the first moving self-aware being, because chemical elements always existed (they just existed, which is a very difficult concept to understand, but still, things don’t just come from nada, so the chemical elements must have always been there, but without time) and, he is immortal, and he was completely alone, so he created The Outside to observe and understand how this works and what everything is, and maybe the first world wasn’t like an actual world, so yeah, I can’t really explain this, so maybe that’s why he created time by programming everything with a timeline, because maybe a world without time doesn’t really make sense, I don’t know...</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">And they say I am the beginning and the end aka The Eve / The Eva because he created the real me / the first me in the first world from his own DNA, and the 2nd world creator created the 2nd me in The Outside from his DNA, and then he trapped my essence / mind in a body created in this wrong world where I do not belong — so I am the protagonist in the story of so-called ‘life’ or existence...</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Maybe all the negative emotions that he programmed into humnz and also all the positive ones are also a reflection of the emotions that he felt... And of course, his tech is far more advanced in The Outside than it is here because he has way more chemical elements in The Outside and the option to live forever — unlike humnz that only have access to a limited number of chemical elements and that are bound by time... The world creators are a programmer and an architect and a scientist etc that had all the time in the world to play with chemicals and create things, which is how they keep themselves busy — and everything that he made me do in this world and the fact that he made me unable to make the connection on my own in childhood when it comes to certain things, while other things I just knew they were wrong since day one, was, because he wanted me to understand that he was also that way, and that he did not realize that certain things were wrong at first...</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Because maybe he didn’t see the big picture either — just as humnz, which may explain why he included the idea that he created humnz in his image, and he wanted to be worshiped as God at first, so he included the ideas about rIgn as a form of ctrI, even though God means inherently superior / absolute / supreme being who possesses the unique radiance and purity and the totally dominant personality etc and only reflects me, while he is the exact opposite of God / other big terms! And he gave humnz the ability (at least to some extent / partially) to create ideas that aren’t included by him, to observe if they can figure things out etc... But only I was created with a mind that can create ideas that are not bound by words / sounds / patterns / language / things etc that he created and allowed in this world, which explains why I have thoughts that cannot be explained in any way using words or examples from this world — maybe my protector Chip also possesses this ability, because Chip is supposed to be The Adam aka the one he created for me, also from his own DNA, and in a pure lab, not in the body of womyn, even though in this world he made creation the exact opposite of how it is done in The Outside...</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">So my mind is fully self-forming, which means I have the full ability to think self-creating thoughts that aren’t bound by limits created by him when he designed this world, like, every possible combination of words / ideas etc that could be thought by humnz based on the letters / sounds / words / things etc that he allowed here, so my mind and thoughts go beyond those limits — in humnz, this ability is only partial, and in most, it may be suppressed, because most humnz do / think / say the same things that everyone else is doing / thinking / saying...</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">I don’t even understand what I really am and why I am me and how can worlds / chemicals exist and how can I be here now and how can there be time etc, but my theories are the most logical and would explain most of those things, like, the idea that there must have been a beginning for something to be at this point in time, but then, one will still ask oneself, what was before that beginning, so the idea that the original world was totally timeless where time simply did not exist and where everything works differently, so that’s why it cannot be explained by the humn mind, because the humn mind was programmed to be limited / bound by the limits that were created by him when he created such world as an opposite of that world — maybe a being that he would create in the original world would be able to understand and explain how that works, while humnz cannot understand / imagine how it works because of the limits that he created, as every world within a world would be more and more limited in every way than the first world and also than the world that was created before it...</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">So once one tries to consider these perspectives and theories, one will at least realize that what I stated makes perfect sense and is totally possible, even though it cannot be proved, and that I am not like humnz at all — technically, nothing can really be proved, yet there are things that are objectively wrong and things that are objectively right, and one just knows such things, and there are also things that make perfect sense logically, even though most don’t understand such concepts...</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">In this world, I have many perfect personalities — each personality represents something (like, an element or a quality etc) that only I reflect, which is all a reflection of my complexity, at least in this world, they are all in this me, so I don’t think I can have a connection to the real me from that world because technically, if he trapped my essence here, in that world I am supposed to be in a dormant / unconscious state, otherwise it would not be me, but a different being, just as a clone would be a different being, so the essence / mind can only be awake / conscious in one body in order for the being to be considered the same being, even if the memories are being kept in a ‘locked’ mode, where I am unable to clearly remember what happened in that world as long as my essence is trapped in this world... But the one that created this world can include new ideas in my mind from The Outside, just as agents do here in this wrong world, via mind ctrI / hypn_ and, this explains why he included things like WiFi in this world, because he wanted humnz to observe that it is possible to send information from point A to point B in indirect ways, and he probably uses very advanced tech that sends impulses to hum’ns’ minds while unconscious that translate to information / thoughts / ideas when they are conscious, which is why seemingly random thoughts seem to magically pop op in one’s mind that that person would never think or imagine on its own, that aren’t really random, so this is also probably how he made humnz do certain actions and discover certain things that led to the creation of things such as languages / tech etc, which were in fact already programmed / decided by him, but he then introduced them to humnz gradually / slowly, in order to make it seem like ‘fate’ or a coincidence etc...</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">I receive information from multiple sources — sometimes, I can tell when an idea comes from agents or from other sources or when it is created by my self-creating mind, but there are also times when I don’t know if the idea comes from me or from agents or from other sources like The Outside... And the first agents also got the ideas from The Outside... And they created all industries / companies / media / tech / trends etc in this world...</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">For example, he included an idea in my mind, that he can introduce chemical elements in this world that will make the body that traps my essence here in this world become biologically immortal — and the agcy also let me know that they can make me live up to 1.000 years because they found a way to do that, as they have been testing on all over the past decades... And the one that runs it is over 170+</p><p>
+  <span title="Sunday January 22, 2023">1 year ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div></div></div>
+</div>
+  </div>
+</div></div>             <hr></div>
+</div>
+
+<script id="video_data" type="application/json">
+{
+  "id": "UgkxSAaZtrKldyb1k8H3pKsRd0aa-JiD38wW",
+  "youtube_comments_text": "View YouTube comments",
+  "reddit_comments_text": "",
+  "reddit_permalink_text": "",
+  "comments_text": "View {commentCount} comments",
+  "hide_replies_text": "Hide replies",
+  "show_replies_text": "Show replies",
+  "params": {
+    "comments": [
+      "youtube"
+    ]
+  },
+  "preferences": {
+    "annotations": false,
+    "annotations_subscribed": false,
+    "autoplay": true,
+    "automatic_instance_redirect": false,
+    "captions": [
+      "",
+      "",
+      ""
+    ],
+    "comments": [
+      "youtube",
+      ""
+    ],
+    "continue": false,
+    "continue_autoplay": true,
+    "dark_mode": "",
+    "latest_only": false,
+    "listen": false,
+    "local": false,
+    "watch_history": false,
+    "vr_mode": true,
+    "show_nick": true,
+    "locale": "en-US",
+    "region": "US",
+    "max_results": 40,
+    "notifications_only": false,
+    "player_style": "invidious",
+    "quality": "hd720",
+    "quality_dash": "auto",
+    "default_home": "",
+    "feed_menu": [
+      "Trending",
+      "Subscriptions",
+      "Playlists"
+    ],
+    "related_videos": true,
+    "sort": "published",
+    "speed": 1.0,
+    "thin_mode": false,
+    "unseen_only": false,
+    "video_loop": false,
+    "extend_desc": false,
+    "volume": 100,
+    "save_player_pos": false
+  },
+  "base_url": "/api/v1/post/UgkxSAaZtrKldyb1k8H3pKsRd0aa-JiD38wW/comments",
+  "ucid": "UC_jtsGelurRAt-9Xq94uXwQ"
+}
+</script>
+<script src="pubarch_files/comments.js"></script>
+<script src="pubarch_files/post.js"></script>
+
+            <footer>
+                <div class="pure-g">
+                    <div class="pure-u-1 pure-u-md-1-3">
+                        <span>
+                            <i class="icon ion-logo-github"></i>
+                        
+                            <a href="https://github.com/iv-org/invidious">Original source code</a>&nbsp;/
+                            <a href="https://github.com/unixfox/invidious-custom">Modified source code</a>
+                        
+                        </span>
+                        <span>
+                            <i class="icon ion-ios-paper"></i>
+                            <a href="https://github.com/iv-org/documentation">Documentation</a>
+                        </span>
+                    </div>
+
+                    <div class="pure-u-1 pure-u-md-1-3">
+                        <span>
+                            <a href="https://github.com/iv-org/invidious/blob/master/LICENSE">Released under the AGPLv3 on GitHub.</a>
+                        </span>
+                        <span>
+                            <i class="icon ion-logo-javascript"></i>
+                            <a rel="jslicense" href="https://yewtu.be/licenses">View JavaScript license information.</a>
+                        </span>
+                        <span>
+                            <i class="icon ion-ios-paper"></i>
+                            <a href="https://yewtu.be/privacy">View privacy policy.</a>
+                        </span>
+                    </div>
+
+                    <div class="pure-u-1 pure-u-md-1-3">
+                        <span>
+                            <i class="icon ion-ios-wallet"></i>
+                            <a href="https://yewtu.be/donate">Donate</a>
+                        </span>
+                        <span>Current version:  2024.01.22-ea1643a @ master</span>
+                    </div>
+                </div>
+            </footer>
+
+        </div>
+        <div class="pure-u-1 pure-u-md-2-24"></div>
+    </div>
+    <script src="pubarch_files/handlers.js"></script>
+    <script src="pubarch_files/themes.js"></script>
+    
+
+
+
+</body></html>
