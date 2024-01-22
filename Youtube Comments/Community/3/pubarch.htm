@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en-US"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+<title>Invidious</title>
+
+    <link rel="apple-touch-icon" sizes="180x180" href="https://yewtu.be/apple-touch-icon.png?v=285297d">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://yewtu.be/favicon-32x32.png?v=285297d">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://yewtu.be/favicon-16x16.png?v=285297d">
+    <link rel="manifest" href="https://yewtu.be/site.webmanifest?v=285297d">
+    <link rel="mask-icon" href="https://yewtu.be/safari-pinned-tab.svg?v=285297d" color="#575757">
+    <meta name="msapplication-TileColor" content="#575757">
+    <meta name="theme-color" content="#575757">
+    <link title="Invidious" type="application/opensearchdescription+xml" rel="search" href="https://yewtu.be/opensearch.xml">
+    <link rel="stylesheet" href="pubarch_files/pure-min.css">
+    <link rel="stylesheet" href="pubarch_files/grids-responsive-min.css">
+    <link rel="stylesheet" href="pubarch_files/ionicons.min.css">
+    <link rel="stylesheet" href="pubarch_files/default.css">
+    <script src="pubarch_files/_helpers.js"></script><script>/******/ (() => { // webpackBootstrap
+/******/ 	"use strict";
+var __webpack_exports__ = {};
+
+;// CONCATENATED MODULE: ../core/dist/flash-identifiers.js
+const FLASH_MIMETYPE = "application/x-shockwave-flash";
+const FUTURESPLASH_MIMETYPE = "application/futuresplash";
+const FLASH7_AND_8_MIMETYPE = "application/x-shockwave-flash2-preview";
+const FLASH_MOVIE_MIMETYPE = "application/vnd.adobe.flash.movie";
+const FLASH_ACTIVEX_CLASSID = "clsid:D27CDB6E-AE6D-11cf-96B8-444553540000";
+
+;// CONCATENATED MODULE: ../core/dist/plugin-polyfill.js
+
+/**
+ * Replacement object for `MimeTypeArray` that lets us install new fake mime
+ * types.
+ *
+ * Unlike plugins we can at least enumerate mime types in Firefox, so we don't
+ * lose data.
+ *
+ * We also expose a method called `install` which adds a new plugin. This is
+ * used to falsify Flash detection. If the existing `navigator.mimeTypes` has an
+ * `install` method, you should not use `RuffleMimeTypeArray` as some other
+ * plugin emulator is already present.
+ */
+class RuffleMimeTypeArray {
+    constructor(mimeTypes) {
+        this.__mimeTypes = [];
+        this.__namedMimeTypes = {};
+        if (mimeTypes) {
+            for (let i = 0; i < mimeTypes.length; i++) {
+                this.install(mimeTypes[i]);
+            }
+        }
+    }
+    /**
+     * Install a MIME Type into the array.
+     *
+     * @param mimeType The mime type to install
+     */
+    install(mimeType) {
+        const index = this.__mimeTypes.length;
+        this.__mimeTypes.push(mimeType);
+        this.__namedMimeTypes[mimeType.type] = mimeType;
+        this[mimeType.type] = mimeType;
+        this[index] = mimeType;
+    }
+    item(index) {
+        // This behavior is done to emulate a 32-bit uint,
+        // which browsers use.
+        return this.__mimeTypes[index >>> 0];
+    }
+    namedItem(name) {
+        return this.__namedMimeTypes[name];
+    }
+    get length() {
+        return this.__mimeTypes.length;
+    }
+    [Symbol.iterator]() {
+        return this.__mimeTypes[Symbol.iterator]();
+    }
+}
+/**
+ * Equivalent object to `Plugin` that allows us to falsify plugins.
+ */
+class RufflePlugin extends RuffleMimeTypeArray {
+    constructor(name, description, filename) {
+        super();
+        this.name = name;
+        this.description = description;
+        this.filename = filename;
+    }
+}
+/**
+ * Replacement object for `PluginArray` that lets us install new fake plugins.
+ *
+ * This object needs to wrap the native plugin array, since the user might have
+ * actual plugins installed. Firefox doesn't let us enumerate the array, though,
+ * which has some consequences. Namely, we can't actually perfectly wrap the
+ * native plugin array, at least unless there's some secret "unresolved object
+ * property name handler" that I've never known before in JS...
+ *
+ * We can still wrap `namedItem` perfectly at least.
+ *
+ * We also expose a method called `install` which adds a new plugin. This is
+ * used to falsify Flash detection. If the existing `navigator.plugins` has an
+ * `install` method, you should not use `RufflePluginArray` as some other plugin
+ * emulator is already present.
+ */
+class RufflePluginArray {
+    constructor(plugins) {
+        this.__plugins = [];
+        this.__namedPlugins = {};
+        for (let i = 0; i < plugins.length; i++) {
+            this.install(plugins[i]);
+        }
+    }
+    install(plugin) {
+        const index = this.__plugins.length;
+        this.__plugins.push(plugin);
+        this.__namedPlugins[plugin.name] = plugin;
+        this[plugin.name] = plugin;
+        this[index] = plugin;
+    }
+    item(index) {
+        // This behavior is done to emulate a 32-bit uint,
+        // which browsers use. Cloudflare's anti-bot
+        // checks rely on this.
+        return this.__plugins[index >>> 0];
+    }
+    namedItem(name) {
+        return this.__namedPlugins[name];
+    }
+    refresh() {
+        // Nothing to do, we just need to define the method.
+    }
+    [Symbol.iterator]() {
+        return this.__plugins[Symbol.iterator]();
+    }
+    get length() {
+        return this.__plugins.length;
+    }
+}
+/**
+ * A fake plugin designed to trigger Flash detection scripts.
+ */
+const FLASH_PLUGIN = new RufflePlugin("Shockwave Flash", "Shockwave Flash 32.0 r0", "ruffle.js");
+FLASH_PLUGIN.install({
+    type: FUTURESPLASH_MIMETYPE,
+    description: "Shockwave Flash",
+    suffixes: "spl",
+    enabledPlugin: FLASH_PLUGIN,
+});
+FLASH_PLUGIN.install({
+    type: FLASH_MIMETYPE,
+    description: "Shockwave Flash",
+    suffixes: "swf",
+    enabledPlugin: FLASH_PLUGIN,
+});
+FLASH_PLUGIN.install({
+    type: FLASH7_AND_8_MIMETYPE,
+    description: "Shockwave Flash",
+    suffixes: "swf",
+    enabledPlugin: FLASH_PLUGIN,
+});
+FLASH_PLUGIN.install({
+    type: FLASH_MOVIE_MIMETYPE,
+    description: "Shockwave Flash",
+    suffixes: "swf",
+    enabledPlugin: FLASH_PLUGIN,
+});
+/**
+ * Install a fake plugin such that detectors will see it in `navigator.plugins`.
+ *
+ * This function takes care to check if the existing implementation of
+ * `navigator.plugins` already accepts fake plugin entries. If so, it will use
+ * that version of the plugin array. This allows the plugin polyfill to compose
+ * across multiple plugin emulators with the first emulator's polyfill winning.
+ *
+ * @param plugin The plugin to install
+ */
+function installPlugin(plugin) {
+    if (!("install" in navigator.plugins) || !navigator.plugins["install"]) {
+        Object.defineProperty(navigator, "plugins", {
+            value: new RufflePluginArray(navigator.plugins),
+            writable: false,
+        });
+    }
+    const plugins = navigator.plugins;
+    plugins.install(plugin);
+    if (plugin.length > 0 &&
+        (!("install" in navigator.mimeTypes) || !navigator.mimeTypes["install"])) {
+        Object.defineProperty(navigator, "mimeTypes", {
+            value: new RuffleMimeTypeArray(navigator.mimeTypes),
+            writable: false,
+        });
+    }
+    const mimeTypes = navigator.mimeTypes;
+    for (let i = 0; i < plugin.length; i += 1) {
+        mimeTypes.install(plugin[i]);
+    }
+}
+
+;// CONCATENATED MODULE: ./src/plugin-polyfill.ts
+// This file is compiled and then injected into content.ts's compiled form.
+
+installPlugin(FLASH_PLUGIN);
+
+/******/ })()
+;</script><script charset="utf-8" src="pubarch_files/ruffle.js"></script>
+</head>
+
+
+
+<body class="no-theme">
+    <span style="display:none" id="dark_mode_pref"></span>
+    <div class="pure-g">
+        <div class="pure-u-1 pure-u-md-2-24"></div>
+        <div class="pure-u-1 pure-u-md-20-24" id="contents">
+            <div class="pure-g navbar h-box">
+                
+                    <div class="pure-u-1 pure-u-md-4-24">
+                        <a href="https://yewtu.be/" class="index-link pure-menu-heading">Invidious</a>
+                    </div>
+                    <div class="pure-u-1 pure-u-md-12-24 searchbar">
+                        <form class="pure-form" action="/search" method="get">
+	<fieldset>
+		<input type="search" id="searchbox" autocorrect="off" autocapitalize="none" spellcheck="false" name="q" placeholder="search" title="search">
+	</fieldset>
+</form>
+
+                    </div>
+                
+
+                <div class="pure-u-1 pure-u-md-8-24 user-field">
+                    
+                        <div class="pure-u-1-3">
+                            <a id="toggle_theme" href="javascript:void(0)" class="pure-menu-heading">
+                                
+                                    <i class="icon ion-ios-moon"></i>
+                                
+                            </a>
+                        </div>
+                        <div class="pure-u-1-3">
+                            <a title="Preferences" href="https://yewtu.be/preferences?referer=%2Fpost%2FUgkxikfSNcJ4kY88jP608343ASDjIbZpeYqU%3Fucid%3DUC_jtsGelurRAt-9Xq94uXwQ" class="pure-menu-heading">
+                                <i class="icon ion-ios-cog"></i>
+                            </a>
+                        </div>
+                        
+                            <div class="pure-u-1-3">
+                                <a href="https://yewtu.be/login?referer=%2Fpost%2FUgkxikfSNcJ4kY88jP608343ASDjIbZpeYqU%3Fucid%3DUC_jtsGelurRAt-9Xq94uXwQ" class="pure-menu-heading">
+                                    Log in
+                                </a>
+                            </div>
+                        
+                    
+                </div>
+            </div>
+
+            
+
+            
+
+<div>
+    <div id="post" class="comments post-comments">
+        <div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/@FrozenMermaid666">Freya Trueandonlyqueengoddess Daethtoallimpostors</a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">I think I am close to having a breakdown, okay, maybe not exactly that, but I definitely feel like yelling at some ppl, like, those ppl that created a zillion versions of the same base language, like, why did they have to create a zillion Norwegian-based / Swedish-based / Danish-based and Dutch-based / German-based languages, why couldn’t there be one version only, as English has, with the same type of spelling, that still looks like the same language?! There’s no way I could learn all those languages, so I was thinking that maybe there’s a way to combine as many of the most similar ones as possible, by only using the words that have a different spelling from the spelling of the official language, because I noticed that many words have the same spelling as the official version of the word, so by combining only the different words from multiple similar languages, the total numbers of languages could probably be reduced to a more manageable number that I could learn, it’s definitely kind of useless and unnecessary to have so many different versions, especially considering the fact that many of them only have like 50 percent or 30 percent of the words with a different spelling, while many or most of the words still have the spelling of the original version, like, is it really necessary to have so many versions... It’s quite obvious that many of the dudes from those countries got very creative with the language and decided to create their own versions by modifying half or a few of the words from the base language, and there are also some of those languages that look more like Icelandic and Old Norse than Norwegian... I also noticed some of the dialects of Swedish that seem to look exactly like standard Swedish, so if they only have a few specific words, those words should just be included in Standard Swedish as synonyms, so that one doesn’t have to go thru all the words that are exactly the same with the exact spelling as the Standard Swedish spelling, just to learn the different words, so the most logical thing to do would be to move the different words to Standard Swedish and also the extra meanings that certain words may have in the dialect versions, so that one could learn the complete set of words and meanings by just learning the standard version, so that one can easily understand all the different words that are specific regional words etc, so they should definitely hire ppl to sort thru the words and create the complete version of Swedish etc, and the same can be said about the dialects of Norwegian / Danish etc that aren’t really a different language with different spelling and that only have a few word differences and extra terms used in certain regions only, I don’t know why they aren’t doing anything to make the official languages more complete and to remove unnecessary dialects that are basically exactly the same as the standard language with a few extra words, which would definitely make communication a lot easier and would make the Standard version of the language more complete, and the other ones with different spelling should be combined into fewer new languages, based on languages that look the same, and grouping them and the different words in a way that would reduce the total number of dialects (or languages that aren’t the official version) without losing any word that has a different spelling that is different or even slightly different from the word used in the official version, and, it would be way better and easier to learn all the different words with different spellings, while also making the total number of languages more manageable and easier for someone to learn them all... I am sure that by combining all the different words with different spelling into fewer languages, based on their spelling, one would make it possible for all the differently spellt words to fit into way fewer languages... If I could find full lists with each word that’s used in each Germanic dialect / language, I would and I might even try going thru them myself and combining them into fewer languages myself, to make sure that no differently spellt word is lost, because a word is a different word, even if it’s just slightly modified with an E instead of É etc... Because right now, there are zillions of dialects and languages, that I just wouldn’t have enough time to learn them all, so it’s way easier to just learn the differently spellt words, by adding them to fewer languages that would have all the words with different spelling, not only half or a quarter etc of the words, which would make it way more manageable and each language more complete and more unique... I will definitely focus on the official version of the language for each group of languages first, and then I will decide how I get all the differently spellt related words / cognates learnt!</p><p>
+  <span title="Thursday December 21, 2023">1 month ago (edited)</span>
+  |  <a href="https://www.youtube.com/channel/UC_jtsGelurRAt-9Xq94uXwQ/community?lb=UgkxikfSNcJ4kY88jP608343ASDjIbZpeYqU" title="YouTube comment permalink">[YT]</a>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div>
+    </div>
+
+    
+    <br>
+
+    <div id="comments" class="comments post-comments">             <div>                 <h3>                     <a href="javascript:void(0)">[ − ]</a>                     View 7 comments                  </h3>                 <b>                  </b>             </div>             <div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_003.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="" href="https://yewtu.be/channel/UC_NqRlj8KSxsZI2sh39lcZg">@co-jt6gd</a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Compression, please? I’m noticing a lot of circumlocution in what you described…</p><p>
+  <span title="Monday January 1, 2024">3 weeks ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 1    </p>
+    <div id="replies" class="pure-g">
+  <div class="pure-u-1-24"></div>
+  <div class="pure-u-23-24"><p><a href="javascript:void(0)" data-sub-text="Hide replies" data-inner-text="Show replies">Hide replies</a></p><div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Where exactly is the circumlocution? I write the way it feels the most natural, it’s my style of typing... Plus some ideas are very important and should be mentioned twice or thrice! The idea that the words with different spelling should be moved to the main languages is the main idea of this post, and it would have sounded like something was missing if this idea wouldn’t have been repeated again where necessary, and it’s also a way to empathize this idea, so that one doesn’t forget what the main idea is! It cannot be called circumlocution, and there’s certainly not a lot of it at all as this is the only Idea that I repeated twice or thrice!</p><p>
+  <span title="Monday January 8, 2024">2 weeks ago (edited)</span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_003.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="" href="https://yewtu.be/channel/UC_NqRlj8KSxsZI2sh39lcZg">@co-jt6gd</a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap"><a href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">&nbsp;@FrozenMermaid666&nbsp;</a> Your message is very repetitive and the meanings of your wording aren’t always clear, that’s what that means. No disrespect intended, it just makes it harder to read.</p><p>
+  <span title="Monday January 8, 2024">2 weeks ago (edited)</span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 1    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">And, yé know what! If one doesn’t want to read the facts to become informed, one shouldn’t be reading my posts at all, as it’s definitely way better than having x or y trying to tell ME how to write my own posts, pfff! Truly, a very tóxic group of ppl, so one naturally feels like not even going online after reading such negative nonsense, and actually, I have already experienced all sorts of bs on yt, from entitled db trying to find ‘flaws’ in my perfect and unique ways of writing and trying to tell me how to write my own comments and posts to slumbering dysléxik db daring to tell me to insert spaces as they have difficulty reading long full-on text (the problem is clearly them, not my writing, since I have zero difficulty reading and re-reading my comments without spaces) to db envious phïhggíds trying to prevent the truth from reaching the masses (and selling obvious bs such as ‘their’ bs ‘methods’ and other lies to the db masses that will buy any bs) to all sorts of db cræy trøllz haræssing me for no ef reason (just for stating the facts) to db ímpøstuhr promoters that dared to misuse my big terms and my respectability pronouns that are only meant for me THE superior / pure being and that dared to put a bunch of wæshed-out öude hógs and bétühs on undsrvd pedestals where they do not belong yet having the audacity to censór the truth when correcting the db ímpòstühs to lots of other lówłíves, pfff, and it only goes to show that this is truly a beyond backwards wørłd that shouldn’t have been created at all! What I say is the most important truth and the most important ideas that all should be happy to read and hear multiple times and all should be grateful and thankful I took the time to share such important facts and ideas! And if one is too db to be grateful and see the truth and prefers to stay db and hernwashed, one might as well ef off my yt, for I am not interested in reading any negative ns! If it’s not a positive comment where one praises me and expresses his gratitude and agreeing with the obvious facts, one should keep it to oneself!</p><p>
+  <span title="Monday January 8, 2024">2 weeks ago (edited)</span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">If I had the power, I’d totally væpp each enemy (including ímpóstr promoters / bétuhs / ímpóstrs / truth-deniers and truth-censoring ßküm / entitled voolz trying to correct ME the Goddess etc) in one second — hüm’n = 💩 for sure!</p><p>
+  <span title="Monday January 8, 2024">2 weeks ago (edited)</span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">So far, every single group of ppl that I came across was / is total shÿte, including the language ‘learning’ ‘community’ and the ‘vegan’ ‘community’ and the ‘reading’ ‘community’ etc and all others, just a bunch of pøsers that aren’t what they claim to be and that clearly don’t enjoy reading long well-written posts, so one can tell one doesn’t even read anything important, just short bs comments that the avrg db posts on yt, judging by this shÿte attitude, and just trying to play ‘intellectual’ on the Internet, but I can see right thru that bs — ppl are clearly getting more and more db’ed down, and also leyzier a leyzier, like, how leyzi can one be to be bothered by one line being repeated 3 ef times to emphasize it lmao 😂 like, seriously, get real!</p><p>
+  <span title="Monday January 8, 2024">2 weeks ago (edited)</span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">How is it not clear? Which message or which part is not clear? I clearly stated that one of my wishes is to get all the words from unofficial languages (aka languages that aren’t officially recognized as a language and that are incorrectly referred to as ‘dialects’ of the official language) that have different spelling (aka spelling that isn’t the same as the spelling in the official language) included in some of the unofficial languages that have mostly words with different spelling, to reduce the number of unofficial languages, without losing any of the words that have different spellings or even different meanings etc, because in most unofficial languages most words still have the same spelling and the same meaning as they do in the official language, and there are way too many of them, so I cannot learn them all!</p><p>
+  <span title="Friday January 12, 2024">1 week ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div></div></div>
+</div>
+  </div>
+</div></div>             <hr></div>
+</div>
+
+<script id="video_data" type="application/json">
+{
+  "id": "UgkxikfSNcJ4kY88jP608343ASDjIbZpeYqU",
+  "youtube_comments_text": "View YouTube comments",
+  "reddit_comments_text": "",
+  "reddit_permalink_text": "",
+  "comments_text": "View {commentCount} comments",
+  "hide_replies_text": "Hide replies",
+  "show_replies_text": "Show replies",
+  "params": {
+    "comments": [
+      "youtube"
+    ]
+  },
+  "preferences": {
+    "annotations": false,
+    "annotations_subscribed": false,
+    "autoplay": true,
+    "automatic_instance_redirect": false,
+    "captions": [
+      "",
+      "",
+      ""
+    ],
+    "comments": [
+      "youtube",
+      ""
+    ],
+    "continue": false,
+    "continue_autoplay": true,
+    "dark_mode": "",
+    "latest_only": false,
+    "listen": false,
+    "local": false,
+    "watch_history": false,
+    "vr_mode": true,
+    "show_nick": true,
+    "locale": "en-US",
+    "region": "US",
+    "max_results": 40,
+    "notifications_only": false,
+    "player_style": "invidious",
+    "quality": "hd720",
+    "quality_dash": "auto",
+    "default_home": "",
+    "feed_menu": [
+      "Trending",
+      "Subscriptions",
+      "Playlists"
+    ],
+    "related_videos": true,
+    "sort": "published",
+    "speed": 1.0,
+    "thin_mode": false,
+    "unseen_only": false,
+    "video_loop": false,
+    "extend_desc": false,
+    "volume": 100,
+    "save_player_pos": false
+  },
+  "base_url": "/api/v1/post/UgkxikfSNcJ4kY88jP608343ASDjIbZpeYqU/comments",
+  "ucid": "UC_jtsGelurRAt-9Xq94uXwQ"
+}
+</script>
+<script src="pubarch_files/comments.js"></script>
+<script src="pubarch_files/post.js"></script>
+
+            <footer>
+                <div class="pure-g">
+                    <div class="pure-u-1 pure-u-md-1-3">
+                        <span>
+                            <i class="icon ion-logo-github"></i>
+                        
+                            <a href="https://github.com/iv-org/invidious">Original source code</a>&nbsp;/
+                            <a href="https://github.com/unixfox/invidious-custom">Modified source code</a>
+                        
+                        </span>
+                        <span>
+                            <i class="icon ion-ios-paper"></i>
+                            <a href="https://github.com/iv-org/documentation">Documentation</a>
+                        </span>
+                    </div>
+
+                    <div class="pure-u-1 pure-u-md-1-3">
+                        <span>
+                            <a href="https://github.com/iv-org/invidious/blob/master/LICENSE">Released under the AGPLv3 on GitHub.</a>
+                        </span>
+                        <span>
+                            <i class="icon ion-logo-javascript"></i>
+                            <a rel="jslicense" href="https://yewtu.be/licenses">View JavaScript license information.</a>
+                        </span>
+                        <span>
+                            <i class="icon ion-ios-paper"></i>
+                            <a href="https://yewtu.be/privacy">View privacy policy.</a>
+                        </span>
+                    </div>
+
+                    <div class="pure-u-1 pure-u-md-1-3">
+                        <span>
+                            <i class="icon ion-ios-wallet"></i>
+                            <a href="https://yewtu.be/donate">Donate</a>
+                        </span>
+                        <span>Current version:  2024.01.21-4581c02 @ master</span>
+                    </div>
+                </div>
+            </footer>
+
+        </div>
+        <div class="pure-u-1 pure-u-md-2-24"></div>
+    </div>
+    <script src="pubarch_files/handlers.js"></script>
+    <script src="pubarch_files/themes.js"></script>
+    
+
+
+
+</body></html>

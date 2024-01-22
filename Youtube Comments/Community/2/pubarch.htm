@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en-US"><script>/******/ (() => { // webpackBootstrap
+/******/ 	"use strict";
+var __webpack_exports__ = {};
+
+;// CONCATENATED MODULE: ../core/dist/flash-identifiers.js
+const FLASH_MIMETYPE = "application/x-shockwave-flash";
+const FUTURESPLASH_MIMETYPE = "application/futuresplash";
+const FLASH7_AND_8_MIMETYPE = "application/x-shockwave-flash2-preview";
+const FLASH_MOVIE_MIMETYPE = "application/vnd.adobe.flash.movie";
+const FLASH_ACTIVEX_CLASSID = "clsid:D27CDB6E-AE6D-11cf-96B8-444553540000";
+
+;// CONCATENATED MODULE: ../core/dist/plugin-polyfill.js
+
+/**
+ * Replacement object for `MimeTypeArray` that lets us install new fake mime
+ * types.
+ *
+ * Unlike plugins we can at least enumerate mime types in Firefox, so we don't
+ * lose data.
+ *
+ * We also expose a method called `install` which adds a new plugin. This is
+ * used to falsify Flash detection. If the existing `navigator.mimeTypes` has an
+ * `install` method, you should not use `RuffleMimeTypeArray` as some other
+ * plugin emulator is already present.
+ */
+class RuffleMimeTypeArray {
+    constructor(mimeTypes) {
+        this.__mimeTypes = [];
+        this.__namedMimeTypes = {};
+        if (mimeTypes) {
+            for (let i = 0; i < mimeTypes.length; i++) {
+                this.install(mimeTypes[i]);
+            }
+        }
+    }
+    /**
+     * Install a MIME Type into the array.
+     *
+     * @param mimeType The mime type to install
+     */
+    install(mimeType) {
+        const index = this.__mimeTypes.length;
+        this.__mimeTypes.push(mimeType);
+        this.__namedMimeTypes[mimeType.type] = mimeType;
+        this[mimeType.type] = mimeType;
+        this[index] = mimeType;
+    }
+    item(index) {
+        // This behavior is done to emulate a 32-bit uint,
+        // which browsers use.
+        return this.__mimeTypes[index >>> 0];
+    }
+    namedItem(name) {
+        return this.__namedMimeTypes[name];
+    }
+    get length() {
+        return this.__mimeTypes.length;
+    }
+    [Symbol.iterator]() {
+        return this.__mimeTypes[Symbol.iterator]();
+    }
+}
+/**
+ * Equivalent object to `Plugin` that allows us to falsify plugins.
+ */
+class RufflePlugin extends RuffleMimeTypeArray {
+    constructor(name, description, filename) {
+        super();
+        this.name = name;
+        this.description = description;
+        this.filename = filename;
+    }
+}
+/**
+ * Replacement object for `PluginArray` that lets us install new fake plugins.
+ *
+ * This object needs to wrap the native plugin array, since the user might have
+ * actual plugins installed. Firefox doesn't let us enumerate the array, though,
+ * which has some consequences. Namely, we can't actually perfectly wrap the
+ * native plugin array, at least unless there's some secret "unresolved object
+ * property name handler" that I've never known before in JS...
+ *
+ * We can still wrap `namedItem` perfectly at least.
+ *
+ * We also expose a method called `install` which adds a new plugin. This is
+ * used to falsify Flash detection. If the existing `navigator.plugins` has an
+ * `install` method, you should not use `RufflePluginArray` as some other plugin
+ * emulator is already present.
+ */
+class RufflePluginArray {
+    constructor(plugins) {
+        this.__plugins = [];
+        this.__namedPlugins = {};
+        for (let i = 0; i < plugins.length; i++) {
+            this.install(plugins[i]);
+        }
+    }
+    install(plugin) {
+        const index = this.__plugins.length;
+        this.__plugins.push(plugin);
+        this.__namedPlugins[plugin.name] = plugin;
+        this[plugin.name] = plugin;
+        this[index] = plugin;
+    }
+    item(index) {
+        // This behavior is done to emulate a 32-bit uint,
+        // which browsers use. Cloudflare's anti-bot
+        // checks rely on this.
+        return this.__plugins[index >>> 0];
+    }
+    namedItem(name) {
+        return this.__namedPlugins[name];
+    }
+    refresh() {
+        // Nothing to do, we just need to define the method.
+    }
+    [Symbol.iterator]() {
+        return this.__plugins[Symbol.iterator]();
+    }
+    get length() {
+        return this.__plugins.length;
+    }
+}
+/**
+ * A fake plugin designed to trigger Flash detection scripts.
+ */
+const FLASH_PLUGIN = new RufflePlugin("Shockwave Flash", "Shockwave Flash 32.0 r0", "ruffle.js");
+FLASH_PLUGIN.install({
+    type: FUTURESPLASH_MIMETYPE,
+    description: "Shockwave Flash",
+    suffixes: "spl",
+    enabledPlugin: FLASH_PLUGIN,
+});
+FLASH_PLUGIN.install({
+    type: FLASH_MIMETYPE,
+    description: "Shockwave Flash",
+    suffixes: "swf",
+    enabledPlugin: FLASH_PLUGIN,
+});
+FLASH_PLUGIN.install({
+    type: FLASH7_AND_8_MIMETYPE,
+    description: "Shockwave Flash",
+    suffixes: "swf",
+    enabledPlugin: FLASH_PLUGIN,
+});
+FLASH_PLUGIN.install({
+    type: FLASH_MOVIE_MIMETYPE,
+    description: "Shockwave Flash",
+    suffixes: "swf",
+    enabledPlugin: FLASH_PLUGIN,
+});
+/**
+ * Install a fake plugin such that detectors will see it in `navigator.plugins`.
+ *
+ * This function takes care to check if the existing implementation of
+ * `navigator.plugins` already accepts fake plugin entries. If so, it will use
+ * that version of the plugin array. This allows the plugin polyfill to compose
+ * across multiple plugin emulators with the first emulator's polyfill winning.
+ *
+ * @param plugin The plugin to install
+ */
+function installPlugin(plugin) {
+    if (!("install" in navigator.plugins) || !navigator.plugins["install"]) {
+        Object.defineProperty(navigator, "plugins", {
+            value: new RufflePluginArray(navigator.plugins),
+            writable: false,
+        });
+    }
+    const plugins = navigator.plugins;
+    plugins.install(plugin);
+    if (plugin.length > 0 &&
+        (!("install" in navigator.mimeTypes) || !navigator.mimeTypes["install"])) {
+        Object.defineProperty(navigator, "mimeTypes", {
+            value: new RuffleMimeTypeArray(navigator.mimeTypes),
+            writable: false,
+        });
+    }
+    const mimeTypes = navigator.mimeTypes;
+    for (let i = 0; i < plugin.length; i += 1) {
+        mimeTypes.install(plugin[i]);
+    }
+}
+
+;// CONCATENATED MODULE: ./src/plugin-polyfill.ts
+// This file is compiled and then injected into content.ts's compiled form.
+
+installPlugin(FLASH_PLUGIN);
+
+/******/ })()
+;</script><script charset="utf-8" src="pubarch_files/ruffle.js"></script><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+<title>Invidious</title>
+
+    <link rel="apple-touch-icon" sizes="180x180" href="https://yewtu.be/apple-touch-icon.png?v=285297d">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://yewtu.be/favicon-32x32.png?v=285297d">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://yewtu.be/favicon-16x16.png?v=285297d">
+    <link rel="manifest" href="https://yewtu.be/site.webmanifest?v=285297d">
+    <link rel="mask-icon" href="https://yewtu.be/safari-pinned-tab.svg?v=285297d" color="#575757">
+    <meta name="msapplication-TileColor" content="#575757">
+    <meta name="theme-color" content="#575757">
+    <link title="Invidious" type="application/opensearchdescription+xml" rel="search" href="https://yewtu.be/opensearch.xml">
+    <link rel="stylesheet" href="pubarch_files/pure-min.css">
+    <link rel="stylesheet" href="pubarch_files/grids-responsive-min.css">
+    <link rel="stylesheet" href="pubarch_files/ionicons.min.css">
+    <link rel="stylesheet" href="pubarch_files/default.css">
+    <script src="pubarch_files/_helpers.js"></script>
+</head>
+
+
+
+<body class="no-theme">
+    <span style="display:none" id="dark_mode_pref"></span>
+    <div class="pure-g">
+        <div class="pure-u-1 pure-u-md-2-24"></div>
+        <div class="pure-u-1 pure-u-md-20-24" id="contents">
+            <div class="pure-g navbar h-box">
+                
+                    <div class="pure-u-1 pure-u-md-4-24">
+                        <a href="https://yewtu.be/" class="index-link pure-menu-heading">Invidious</a>
+                    </div>
+                    <div class="pure-u-1 pure-u-md-12-24 searchbar">
+                        <form class="pure-form" action="/search" method="get">
+	<fieldset>
+		<input type="search" id="searchbox" autocorrect="off" autocapitalize="none" spellcheck="false" name="q" placeholder="search" title="search">
+	</fieldset>
+</form>
+
+                    </div>
+                
+
+                <div class="pure-u-1 pure-u-md-8-24 user-field">
+                    
+                        <div class="pure-u-1-3">
+                            <a id="toggle_theme" href="javascript:void(0)" class="pure-menu-heading">
+                                
+                                    <i class="icon ion-ios-moon"></i>
+                                
+                            </a>
+                        </div>
+                        <div class="pure-u-1-3">
+                            <a title="Preferences" href="https://yewtu.be/preferences?referer=%2Fpost%2FUgkx4TMNulgBoaBt-mQsxGSw7p2umFkFW6lF%3Fucid%3DUC_jtsGelurRAt-9Xq94uXwQ" class="pure-menu-heading">
+                                <i class="icon ion-ios-cog"></i>
+                            </a>
+                        </div>
+                        
+                            <div class="pure-u-1-3">
+                                <a href="https://yewtu.be/login?referer=%2Fpost%2FUgkx4TMNulgBoaBt-mQsxGSw7p2umFkFW6lF%3Fucid%3DUC_jtsGelurRAt-9Xq94uXwQ" class="pure-menu-heading">
+                                    Log in
+                                </a>
+                            </div>
+                        
+                    
+                </div>
+            </div>
+
+            
+
+            
+
+<div>
+    <div id="post" class="comments post-comments">
+        <div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_002.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/@FrozenMermaid666">Freya Trueandonlyqueengoddess Daethtoallimpostors</a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Learning the Runes... <br>ᚠ — fehu ( F ) = wealth (ancestral to fee / feh / feoh / vieh / fioh / vee / fēo and symbolizing wealth) <br>ᚢ — uruz ( U ) = aurochs / storm / rain (also slag aka stony waste from metals or bad iron) <br>ᚦ — þurisaz / thurisaz ( TH / approximant of T ) = giant (ancestral to Thursday / Thor / Torsdag etc) <br>ᚨ — ansuz ( A ) = God (ancestral to Áss / Aesir / Ás etc) <br>ᚱ — raido / raiðo ( R ) = ride (ancestral to rida / rit / riða / ri / rijden / ritt / reidio / raid etc) <br>ᚲ — kenaz / kauna ( K ) = blister / sore / boil / ulcer / torch <br>ᚷ — gebo ( G ) = gift / something given (ancestral gjöf / geben / ge / geven / gi / gefa / give / gee etc) <br>ᚹ — wunjo ( W ) = joy <br>ᚺ — hagalaz ( H ) = hail (unpleasant form of precipitation) <br>ᚾ — naudiz / nauðiz ( N ) = need / emergency / desperation (ancestral to nood / need etc) <br>ᛁ — isaz / isa ( I ) = ice (ancestral to isa / is / ice / ys / ijs / ís / eis / eisi / eisia etc) <br>ᛃ — jera ( J / Y ? ) = harvest / good year (ancestral to year / jaar / jahr / år / ár / ári etc) <br>ᛇ — eihwaz ( Æ ? ) = yew tree <br>ᛈ — perþo / perðo ( P ) = pear / pear tree <br>ᛉ — algiz ( Z ) = elk <br>ᛊ — sowilo ( S ) = Sun (the word Sowilo is ancestral to Sun / Sol / Son / Soleil / Zon etc) <br>ᛏ — tiwaz ( T ) = Tyr / Tiw / Týr (ancestral to Tuesday etc) <br>ᛒ — berkana / berkano ( B ) = birch / the birch tree (ancestral to berk / birch etc) <br>ᛖ — ehwaz ( E ) = horse (ancestral to equus etc) <br>ᛗ — mannaz ( M ) = man <br>ᛚ — laguz / laukaz ( L ) = lake / leek <br>ᛜ — ingwaz ( NG / ING ? ) = Ingwaz / Freyr <br>ᛞ — dagaz ( D ) = day (ancestral to dag / dia / day etc) <br>ᛟ — oþalaz / oþala ( O ) = heritage / inherited property <br><br>ᚠ ᚢ ᚦ ᚬ ᚭ ᚱ ᚴ ᚼ ᚽ ᚾ ᚿ ᛁ ᛅ ᛆ ᛋ ᛌ ᛏ ᛐ ᛒ ᛓ ᛘ ᛙ ᛚ ᛦ ᛧ <br><br>ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᚷ ᚹ ᚺ ᚾ ᛁ ᛃ ᛇ ᛈ ᛉ ᛊ ᛏ ᛒ ᛖ ᛗ ᛚ ᛜ ᛟ ᛞ <br><br>ᚠ ᚢ ᚦ ᚬ ᚭ ᚱ ᚴ ᚼ ᚽ ᚾ ᚿ ᛁ ᛅ ᛆ ᛋ ᛌ ᛏ ᛐ ᛒ ᛓ ᛘ ᛙ ᛚ ᛦ ᛧ <br>ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᚷ ᚹ ᚺ ᚾ ᛁ ᛃ ᛇ ᛈ ᛉ ᛊ ᛏ ᛒ ᛖ ᛗ ᛚ ᛜ ᛟ ᛞ <br><br>Other words that have the same root words are... <br>— aþnam —&gt; any / ano / anno / año / bliain / bliadhna / blwyddyn etc... <br><br>More chunks and phrases in Dutch and Dutch words... <br><br>- verplichting (obligation)&nbsp;<br>- mopperen (to grumble) <br>- destijds (at the time)&nbsp;<br>- op het schoolplein (in the schoolyard) <br>- de leerplicht (the compulsory education) <br>- het geroezemoes (the buzz)&nbsp;<br>- door middel van boeken <br>- het aspect / het sociale aspect van <br>- met stukjes (with bits and pieces) <br>- vanaf de tweede klas (from the second grade onwards)&nbsp;<br>- spreekvaardigheid missen (to lack in speaking skills) <br>- aanvragen (to apply for / to ask for)&nbsp;<br>- woordenlijsten te stampen (wordlists to cram)&nbsp;<br>- meer druk op hem kwam te staan (there was more pressure on him) <br>- het dwangmatige (the compulsion) <br>- grammatica vanbuiten te leren (to memorize grammar)&nbsp;<br>- constant van klas aan het wisselen (constantly changing classes)&nbsp;<br>- de overgang naar (the transition to)&nbsp;<br>- huiswerk gaan inleveren (to go hand in homework)&nbsp;<br>- in een andere levensfase komen (to enter another phase of life)&nbsp;<br>- schoolreisjes (school trips)&nbsp;<br>- vegen (to sweep) <br>- toentertijd (back then) <br>- braaf (well-behaved)&nbsp;<br>- stout (naughty) <br>- voorstelling (performance)&nbsp;<br>- dat werd bestraft (that got punished) <br>- optredens (appearances on stage)&nbsp;<br>- met rood (iets) aangeven (to mark with red)&nbsp;<br>- ging er van uit dat (assumed that)&nbsp;<br>- een stuk verantwoordelijkheid kreeg (got a bit of responsibility)&nbsp;<br>- aanschaffen (to purchase) <br>- een blijk van waardering (a sign of appreciation) <br>- bevoordelen / bevoordeelde / bevoordeeld (to prioritize)&nbsp;<br>- zwoegen (to toil) <br>- leuzen (to slog) <br>- om dat te kunnen leuzen (to be able to slog around that)&nbsp;<br>- de ontheffing (the waiver / the dispensation) <br>- de dispensatie (the dispensation)&nbsp;<br>- de vrijstelling (the exemption)&nbsp;<br>- spriet (sprit) <br><br>Ik kon daarover mopperen... <br>Ik vond et het fijnste wat er was... <br>Ik heb ontheffing van de leerplicht aangevraagd... <br>Leer jij Nederlands op de schoolse manier? <br>Ik blonk toch een beetje uit in aardrijkskunde... <br>Toen moest ik Nederlands en Noors bevoordelen...</p><p>
+  <span title="Monday August 21, 2023">5 months ago (edited)</span>
+  |  <a href="https://www.youtube.com/channel/UC_jtsGelurRAt-9Xq94uXwQ/community?lb=Ugkx4TMNulgBoaBt-mQsxGSw7p2umFkFW6lF" title="YouTube comment permalink">[YT]</a>
+  |  <i class="icon ion-ios-thumbs-up"></i> 1    </p>
+    
+  </div>
+</div>
+    </div>
+
+    
+    <br>
+
+    <div id="comments" class="comments post-comments">             <div>                 <h3>                     <a href="javascript:void(0)">[ − ]</a>                     View 27 comments                  </h3>                 <b>                  </b>             </div>             <div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/channels4_profile.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="" href="https://yewtu.be/channel/UChZKvJ5T4ufSXG9nuIif49w">@AccSwtch50</a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Hi, what's the answer to this question?<br>"There are 50 books in a library. Sam decides to read 5 of the books. How many books are there now?“<br><br>Also, what's your views on your abilities? How did the questions affect your views? and what's your view on me, especially with the context that I gave you these questions?<br><br>Also, is your mental block gone now?</p><p>
+  <span title="Monday August 21, 2023">5 months ago (edited)</span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    <div id="replies" class="pure-g">
+  <div class="pure-u-1-24"></div>
+  <div class="pure-u-23-24"><p><a href="javascript:void(0)" data-sub-text="Hide replies" data-inner-text="Show replies">Hide replies</a></p><div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Well, if Sam takes the five books home, then there are 45 left at the library, but if he reads them at the library, there are still 50 books at the library — but I don’t want to be asked such questions, because I don’t like maths...</p><p>
+  <span title="Monday August 21, 2023">5 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Which abilities? My language learning abilities, or?</p><p>
+  <span title="Monday August 21, 2023">5 months ago (edited)</span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">I’m not sure, I don’t know...</p><p>
+  <span title="Monday August 21, 2023">5 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">My mental block was reversed a few days ago, so I could wash the legs and change the booties, but now it’s back again, so I cannot do anything, and I couldn’t do anything yesterday, but I must do 2 more boxes today, so that I can get in bed in 2 days or so... My leg is so bürned right now (chemical bürns) because I bleached the hell out of it, and actual bleach really bürns, so I bet all contaminants were gone after the bleaching session, but now new slough is forming again, so it’s driving me nuts, pfff, and I will have to bleach it one more time when I get in bed and properly wash the entire legs and everything else from waist down, and then I can finally allow it to heal (I don’t want it to heal before I do the proper final washing after I get in bed, because I want to make sure all crust and all slough is removed first, because even though they say wounds heal from the inside, I still don’t know if it is true and am still dísgüsted because that area was contaminated with contaminants off the floor, so I need to make sure every last piece of crust and one more layer of skin are removed first, and that it is truly hygienic before it starts healing, so that I can have peace of mind) and use that body lotion multiple times a day, until it heals, like I did a few months ago... My wound had a lot of hardened crust a few days ago, before I washed the legs, so I had to remove as much crust as possible before I washed the legs, and it was so hard, it literally pulled a lot of small leg hairs (but luckily there were no long hairs from my head trapped in the wound bed this time) and it even błed a bit, and I noticed that it was kinda healing under the crust, so I decided to leave the bleach a bit longer to remove a few layers of skin because I didn’t want it to heal with possible contaminants still trapped in there, that may have ended up under my skin, so I have to keep it from healing until I get in bed and properly wash it...</p><p>
+  <span title="Monday August 21, 2023">5 months ago (edited)</span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">By the way, are you from the United States or from Indonesia?</p><p>
+  <span title="Monday August 21, 2023">5 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/channels4_profile.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="" href="https://yewtu.be/channel/UChZKvJ5T4ufSXG9nuIif49w">@AccSwtch50</a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap"><a href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">&nbsp;@FrozenMermaid666&nbsp;</a> By abilities, I'm reffering to your unique qualities, like beimg the most logical being, and having an infinite/multi-dimensional way of thinking, the ability to see things and patterns in your mind, and think ideas that is outside this world. How did the questions affect those?<br><br>Also, am I still a human?<br><br>By the way I'm from Indonesia.<br><br>Here's another question for you: Is it possible to make a coherent document by simply taking a random word or fragment of a word then predict what would be the next word or word fragment (this also includes new lines) from the text that has already been written in the document until the document is long enough?</p><p>
+  <span title="Monday August 21, 2023">5 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">The mental block is not strong for now because I could finally do one more box today — I have to do one more box tomorrow, and then I will have more space on this side of the bed!</p><p>
+  <span title="Monday August 21, 2023">5 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Technically, questions do not affect them in any way! But what do you mean by ‘am I still a human’ and by affect them? Do ye not consider yeself a human or? I have no idea about the document, but I guess it may be possible....</p><p>
+  <span title="Monday August 21, 2023">5 months ago (edited)</span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/channels4_profile.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="" href="https://yewtu.be/channel/UChZKvJ5T4ufSXG9nuIif49w">@AccSwtch50</a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap"><a href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">&nbsp;@FrozenMermaid666&nbsp;</a> But does the questions make you at least doubt about the fact that you have those abilities? <br><br>Anyways, I do consider myself a human, but do you consider me, as a human, given that I gave you the questions in the first place?<br><br>Also, what do you propose about how the way the document predictor works?</p><p>
+  <span title="Monday August 21, 2023">5 months ago (edited)</span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">So, English isn’t your first language? How long did it take to learn English? Did you start learning English one year ago or?</p><p>
+  <span title="Monday August 21, 2023">5 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">No, I would never ‘doubt’ it, because it’s a fact — not knowing the answer to a bunch of man-made questions / maths questions etc has nada to do with IQ / intel aka logic, in fact, someone without logic might know and like maths, they are two completely different things!</p><p>
+  <span title="Monday August 21, 2023">5 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">If x is a hum’n of not, does not depend on such questions / maths related questions etc — the right questions to know if one is a hum’n or above hum’ns are the questions asking him if he is vírgìn by choice (and a c-section birth) and if he cannot stand wøm’n and is eternally loyal to me The Goddess aka the pure being and how high are his perception level and awareness and sensitivity to bæd smėlls etc and if he eats a vegetarian aka plant-based diet which is the right / pure / natural diet aka the logical diet, as the pure protectors, who are all vírgìn by choice and by birth (c-section birth at least, and possibly created in a pure lab, but we don’t know that for sure as the agėncy hasn’t confirmed if we were created in a lab or not yet) and by design (they are an enjoyable presence like I am) and, they all height wøm’n and cannot stand the injustice created by bėtuhs that put impöstuhrs aka wøm’n on undeserved pedestals where they do not belong (where only I belong) as they know I am the pure being and the only being who deserves everything, and they all eat plant-based like I do,&nbsp;and they have the highest perception level and the highest awareness and the highest sensitivity to smėlls / tastes etc (just like I do) and could / would never want to be with or around wøm’n aka eempure beings by design, in fact, all guys with a mind on the logical side (even those that never met me) such as N. Tesla and a few others stayed away from wøm’n by choice and couldn’t stand wøm’n because they also noticed the injustice and the eempurity and the smėlls etc, so they preferred the company of pure beings like birds (birds / bees / butterflies etc are pure beings who reflect me the pure being) such as doves, and there were a few guys with a mind on the logical side in each age / century...</p><p>
+  <span title="Monday August 21, 2023">5 months ago (edited)</span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">So a logical being automatically has a highest perception level / awareness / sensitivity to smėlls and tastes etc, so we logical beings have the most refined / extremely refined tastes in food / drink etc and music and clothing and languages etc and everything else — another quality that logical beings possess is open-mindedness, so we are very open-minded to new ideas and concepts etc, so when we found out that one of our habits etc wasn’t good / right, we automatically changed it overnight, we didn’t try to argue against the obvious facts, like, when I realized that eating animal products was wrong and not a logical thing to do and not even my choice, just a bad habit that was fórced on me by the ėvil mønstuhrs that ‘raised’ me as a child, that was not even enjoyable because animal products have a really yukeh smėll / taste, I immediately changed that wrong habit, I did not try to argue against it, I literally ditched all animal products overnight, and I could also accept all sorts of logical ideas in general without trying to argue or deny the facts, whenever I was made aware of the facts, and my protectors are also like I am, while ppł that haven’t got logic would always try to argue against or deny the obvious facts and make the funniest exquses, because close-mindedness and lack of logic go hand in hand!</p><p>
+  <span title="Monday August 21, 2023">5 months ago (edited)</span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">I am so sleepy today, I literally fell asleep again before I even posted that comment...</p><p>
+  <span title="Monday August 21, 2023">5 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Anyways, in English, does is only used with the 3rd person singular pronouns, but why did ye write does the questions (questions is a plural) instead of do the questions? And why did ye add as before consider me and a human? I haven’t heard anyone say it that way, only without as, so, consider me a + noun! And I also haven’t heard anyone say about how the way the, only without the how, so, about the way the + noun + verb etc! Are these deliberate mistakes or typos or?</p><p>
+  <span title="Monday August 21, 2023">5 months ago (edited)</span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">I tried to approve yer last replies, but they don’t show up here, I could see that it was something about Infinity — Infinity is just something that indicates a superlative in this case, it’s impossible to quantify, even Infinity in general, it cannot really be quantified because it would go on forever...</p><p>
+  <span title="Saturday October 21, 2023">3 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">By the way, after I started learning a lot of words in Old Norse, I noticed that Old Norse is just as pretty as Dutch and English and Norwegian / Danish — simply gorgeous! I highly recommend learning these languages! Are ye learning new languages at the moment?</p><p>
+  <span title="Saturday October 21, 2023">3 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Old Norse is one of the prettiest languages I’ve ever seen, it has real gorgeous words like erfiði / yfir / haf / vindr / dyn / skegg / dróttinn / veit / drengr / fjall / hǫnd / fisksins / lengr / hvassir / rauðr / hvarr / grænn / hvat / líkligr / hǫss / afi / frændi / heitir / veð / hráka / þó / kvern / mælti / hét / setja / hinn / kveða / sinn / leið / brott / knerri / við / dýr / með / heyra / eða etc, and the word endings (like nir and inn and sins etc) and the letter combinations are so pretty, just like the word endings and letter combinations in English and Dutch and Norwegian — I can’t stop learning new pretty words in Old Norse and Icelandic (and the other pretty languages) and they are really áddìctive to look at and read and hear in lyrics etc, I’ve been listening to Skáld songs in Old Norse and Icelandic since I found the first song in Old Norse (Troll Kalla Mik) and I’ve memorized most of those lyrics!</p><p>
+  <span title="Saturday October 21, 2023">3 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/channels4_profile.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="" href="https://yewtu.be/channel/UChZKvJ5T4ufSXG9nuIif49w">@AccSwtch50</a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap"><a href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">&nbsp;@FrozenMermaid666&nbsp;</a> This is the previous response from the other thread:<br><br>Well. since you still haven't really given any precise definition for almost infinity and close to almost infinity, I'll try to guess it instead.<br><br>these are my guesses on the definitions:<br><br>Close to almost infinity percent = 100 Billion percent<br>If a different rounding is used (more on that later) = 30000000000%<br><br>Almost Infinity percent = 1 Trillion percent (10^12%)<br><br>My question is, can you verify this? Is it correct or incorrect? If so, why?<br><br><br>Anyways, Here's how I did it using math (and a few assumptions):<br><br>First, I turn your own scale into a number from 0 to 1 using this formula:<br><br>(x/(100+x))<br><br>Where x is your own percentage (e.g 1000%)<br><br>Seeing how you define your spectrum, this seems to be a good enough formula for this job.<br><br>It normally would use 1 as in (x/(1+x)), but since your scale is a percentage and not a round number (i.e an integer), I add by 100 instead to correct for that.<br><br>When applied to Infinity:<br><br>(Infinity/(100+Infinity))<br><br>(Infinity/Infinity)<br><br>The reason why 100+Infinity is Infinity is because if you add anything to Infinity it will be equal to Infinity because it has infinite numbers and as such the first 100 numbers are put in one set and the rest of the numbers in another, and this can be matched with the original Infinity by simply finding a number in the original Infinity then matching it with the two sets, if it's the first 100 numbers, it will be matched to the first set, otherwise it will be matched to the other set, thus them being equal.<br><br>= 1<br><br>Any number divided by itself is equal to one.<br><br>When applied to the last percentage that is precise enough to be used (that isn't Infinity):<br><br>((10^9)/(100+(10^9)))<br><br>(1000000000/(100+1000000000))<br><br>(1000000000/1000000100)<br><br>≈ 0.9999999000000099999990000000999999900000009999999<br><br>This will be the minimum value for my new scale and 1 (which is infinity percent) will be the maximum value used for my new scale, which is (1000000000/1000000100) to 1, this will then be turned to a scale from 0 to 1.<br><br>Now this is the formula for turning the (1000000000/1000000100) to 1 scale to 0 to 1:<br><br>((x-y)/(z-y))<br><br>Where:<br><br>x = the number to be converted<br><br>y = the lower bound number (1000000000/1000000100))<br><br>z = the upper bound number (1)<br><br>then its inverse formula is:<br><br>((x*(z-y)+y))<br><br>Where:<br><br>x = the number to be converted back<br><br>y = the lower bound number (1000000000/1000000100)<br><br>z = the upper bound number (1)<br><br>So, some percentages, here another set of assumptions are being made which is:<br><br>Almost ≈ 99%<br><br>Close to almost ≈ 95%<br><br>So with those assumptions, let's plug some numbers into the formula:<br><br>First of all, turn the percentages into numbers:<br><br>99% = 0.99 or (99/100)<br><br>95% = 0.95 or (95/100)<br><br>then plug it into the formula:<br><br>(((99/100)*(1-(1000000000/1000000100)))+(1000000000/1000000100))<br><br>(((99/100)*(1-(10000000/10000001)))+(1000000000/1000000100))<br><br>(((99/100)*((10000001/10000001)-(10000000/10000001)))+(1000000000/1000000100))<br><br>(((99/100)*((1/10000001)))+(1000000000/1000000100))<br><br>((99/1000000100)+(1000000000/1000000100))<br><br>(1000000099/1000000100)<br><br>≈ 0.999999999000000099999990000000999999900000009999999<br><br>I get 0.999999999000000099999990000000999999900000009999999 from it.<br><br>Then, I turn this into your scale with this formula:<br><br>((100x)/(1-x))<br><br>where x is my 0 to 1 scale.<br><br>I derived it like this:<br><br>first, get the original formula:<br><br>(x/(100+x))<br><br>second, swap all x to y, and then make it equal to x:<br><br>y/(100+y)=x<br><br>third, multiply both sides by (100+y):<br><br>y/(100+y)*(100+y)=x*(100+y)<br><br>since /(100+y) and *(100+y) cancels out, this is the result:<br><br>y=x*(100+y)<br><br>I will rearrange it a little:<br><br>x*(100+y)=y<br><br>fourth, break the left side of the equation using the distributive property (i.e multiply x with the numbers in the parantheses):<br><br>100x+xy=y<br><br>fifth, subtract both sides by xy:<br><br>100x+xy-xy=y-xy<br><br>since +xy and -xy cancels out, this is the result:<br><br>100x=y-xy<br><br>sixth, using the distributive property, merge the right side of the equation:<br><br>100x=y*(1-x)<br><br>seventh, divide both sides with (1-x) to remove the (1-x) on the right side of the equation:<br><br>((100x)/(1-x))=(y*(1-x)/(1-x))<br><br>the multiplication and the division of y by (1-x) cancels each other out, and thus:<br><br>((100x)/(1-x))=y<br><br>there you go, the formula!<br><br>anyways, plugging the number I got before:<br><br>((100*(1000000099/1000000100))/(1-(1000000099/1000000100)))<br><br>((100000009900/1000000100)/(1-(1000000099/1000000100)))<br><br>((1000000099/10000001)/(1-(1000000099/1000000100)))<br><br>((1000000099/10000001)/((1000000100/1000000100)-(1000000099/1000000100)))<br><br>((1000000099/10000001)/(1/1000000100))<br><br>((1000000099/10000001)*(1000000100/1))<br><br>((1000000099/1)*(100/1))<br><br>(1000000099*100)<br><br>= 100000009900<br><br>Now, seeing the fact that the number you gave me for percentages at or above 100 is a power of ten, I then rounded it to the nearest higher power of 10:<br><br>1000000000000<br><br>and converting it back to my scale (the normal one that matches your 0% to infinity% to my 0 to 1):<br><br>(1000000000000/(1000000000000+100))<br><br>(1000000000000/1000000000100)<br><br>≈ 0.9999999999000000000099999999990000000000999999999900000000009999999999<br><br>Now, convert it to the (1000000000/1000000100) to 1 scale:<br><br>(((1000000000000/1000000000100)-(1000000000/1000000100))/(1-(1000000000/1000000100)))<br><br>((9990000000/100000010010000001)/(1-(1000000000/1000000100)))<br><br>((9990000000/100000010010000001)/(1-(10000000/10000001)))<br><br>((9990000000/100000010010000001)/((10000001/10000001)-(10000000/10000001)))<br><br>((9990000000/100000010010000001)/(1/10000001))<br><br>(9990000000/10000000001)<br><br>≈ 99.89999999001000000099899999990010000000998999999900100000009989999999001%<br><br>Seems pretty close to the initial guess of 99%.<br><br>Now, for close to almost infinity (which is assumed to be 95%), I won't show you the entire process again, so I will skip to the part before rounding:<br><br>20000001900<br><br>Now I will round this to the nearest higher power of 10:<br><br>100000000000<br><br>Converting this to the (1000000000/1000000100) to 1 scale yields to:<br><br>(90000000/90909091)<br><br>≈ 98.999999901000000098999999901000000098999999901000000098999999901%<br><br>which is very off from the initial guess of 95%, however, I think this is more accurate since it follows your pattern better.<br><br>Regardless, here's a different rounding technique:<br><br>30000000000<br><br>Instead of rounding to the nearest higher power of 10, now it's rounded to the nearest higher multiplier of 10.<br><br>and when converted to the (1000000000/1000000100) to 1 scale:<br><br>(290000000/300000001)<br><br>≈ 96.6666663444444455185185149382716168724279437585735208047549306508168978306103405646321981178926729403577568654741437817528540608238197%<br><br>Which is more closer to the guess of 95%, but because it doesn't follow your pattern as perfectly, it's unlikely that this is correct.<br><br>There is a naive way to do this which is simply by simply extending the pattern on the names for your numbers, the last percentage that is precise enough to be used (that isn't Infinity) is 1 billion percent or (10^9%), and expanding on that:<br><br>Close to almost infinity percent = 1 Trillion percent (10^12%)<br><br>Almost Infinity percent = 1 Quadrillion percent (10^15%)<br><br>But the reason this is naive is because it ignores the fact that there is no number higher than Infinity as if you try to apply it there:<br><br>Infinity percent = 1 Quintillion percent (10^18%)<br><br>The existence of the number 1000000000000000001 and a googol (along with any bigger number), makes this incorrect, hence the math.</p><p>
+  <span title="Tuesday November 21, 2023">2 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/channels4_profile.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="" href="https://yewtu.be/channel/UChZKvJ5T4ufSXG9nuIif49w">@AccSwtch50</a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap"><a href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">&nbsp;@FrozenMermaid666&nbsp;</a> Here are the word / language prettiness spectrum in various scales according to the formulas:<br><br>Modern Dutch, Modern English:<br><br>Freya = Infinity%<br>Standard percentage = 100%<br>0 to 1 = 1<br>Fraction = 1/1<br><br>Norwegian / Danish and Old Norse / Icelandic:<br><br>Freya = Almost Infinity% = 1000000000000%<br>Standard percentage ≈ 99.99999999000000000099999999990000000000999999999900000000009999999999%<br>0 to 1 ≈ 0.9999999999000000000099999999990000000000999999999900000000009999999999<br>Fraction = 1000000000000/1000000000100<br><br>Welsh / Breton / Cornish:<br><br>Freya = Close to Almost Infinity% = 100000000000%<br>Standard percentage ≈ 99.9999999000000000999999999000000000999999999000000000999999999%<br>0 to 1 ≈ 0.999999999000000000999999999000000000999999999000000000999999999<br>Fraction = 1000000000/1000000001<br><br>(Alt Rounding) Welsh / Breton / Cornish:<br><br>Freya = Close to Almost Infinity% = 30000000000%<br>Standard percentage ≈ 99.9999996666666677777777740740740864197530452674898491083671696387761012040796626530677911564406961451976795160077349466408835111970549626764834577450551408498161971672793427757355240808815863970613786764620710784597630718007897606640341311198862296003792346654025511153248296155839012813869957287100142376332%<br>0 to 1 ≈ 0.999999996666666677777777740740740864197530452674898491083671696387761012040796626530677911564406961451976795160077349466408835111970549626764834577450551408498161971672793427757355240808815863970613786764620710784597630718007897606640341311198862296003792346654025511153248296155839012813869957287100142376332<br>Fraction = 300000000/300000001<br><br>Most other Germanic languages:<br><br>Freya = 1000000% to 1000000000%<br>Standard percentage ≈ 99.99000099990000999900009999% to ≈ 99.99999000000099999990000000999999900000009999999%<br>0 to 1 ≈ 0.9999000099990000999900009999 to ≈ 0.9999999000000099999990000000999999900000009999999<br>Fraction = 10000/10001 to 10000000/10000001<br><br>Manx, Irish, Scottish Gaelic, Hungarian, Gallo, Portuguese, Galician, Catalan, Latin, Occitan:<br><br>Freya = 1000% to 1000000%<br>Standard percentage ≈ 90.90909090909090909090909090909% to ≈ 99.99000099990000999900009999%<br>0 to 1 ≈ 0.9090909090909090909090909090909 to ≈ 0.9999000099990000999900009999<br>Fraction = 10/11 to 10000/10001<br><br>Aranese, French, Esperanto, Italian, Guernsey:<br><br>Freya = 100% to 1000%<br>Standard percentage = 50% to ≈ 90.90909090909090909090909090909%<br>0 to 1 = 0.5 to ≈ 0.9090909090909090909090909090909<br>Fraction = 1/2 to 10/11<br><br>Spanish:<br><br>Freya = 90% to 99%<br>Standard percentage ≈ 47.3684210526315789473684210526315789473684210526315789% to ≈ 49.7487437185929648241206030150753768844221105527638190954773869346733668341708542713567839195979899497487437185929648241206030150753768844221105527638190954773869346733668341708542713567839195979899497487437185929648241206030150753768844221105527638190954773869346733668341708542713567839195979899%<br>0 to 1 ≈ 0.473684210526315789473684210526315789473684210526315789 to ≈ 0.497487437185929648241206030150753768844221105527638190954773869346733668341708542713567839195979899497487437185929648241206030150753768844221105527638190954773869346733668341708542713567839195979899497487437185929648241206030150753768844221105527638190954773869346733668341708542713567839195979899<br>Fraction = 9/19 to 99/199<br><br>Finnish, Estonian, Latvian, Indonesian, Filipino, Sundanese:<br><br>Freya = 50% to 83%<br>Standard percentage ≈ 33.33333333333333333333333333333333% to ≈ 45.3551912568306010928961748633879781420765027322404371584699453551912568306010928961748633879781420765027322404371584699453551912568306010928961748633879781420765027322404371584699%<br>0 to 1 ≈ 0.3333333333333333333333333333333333 to ≈ 0.453551912568306010928961748633879781420765027322404371584699453551912568306010928961748633879781420765027322404371584699453551912568306010928961748633879781420765027322404371584699<br>Fraction = 1/3 to 83/183<br><br>Chinese:<br><br>Freya = 60% or more<br>Standard percentage = 37.5% or more<br>0 to 1 = 0.375 or more<br>Fraction = 3/8 or more</p><p>
+  <span title="Tuesday November 21, 2023">2 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/channels4_profile.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="" href="https://yewtu.be/channel/UChZKvJ5T4ufSXG9nuIif49w">@AccSwtch50</a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap"><a href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">&nbsp;@FrozenMermaid666&nbsp;</a> Since you might not be reading the comments very thoroughly (because there's 100+ comments in the way) I decided to list them here again, so you can read them a bit more thoroughly and come to a more detailed reply.</p><p>
+  <span title="Tuesday November 21, 2023">2 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Old Norse is actually just as pretty as Dutch and English, to be honest — I know a lot of words in Old Norse now, and I have seen thousands of words, and it’s super gorgeous! But anyways, I don’t really understand those maths calculations and stuff — I cannot verify such thing! I was referring to Infinity as a general thing, in the sense that those languages are just so pretty, that I cannot really describe it — but, I don’t think it’s possible to calculate such things which aren’t meant to be calculated!</p><p>
+  <span title="Tuesday November 21, 2023">2 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">By the way, are yé learning any languages?&nbsp;<br>And, do yé want to know multiple languages?</p><p>
+  <span title="Tuesday November 21, 2023">2 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div></div></div>
+</div>
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed_003.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="" href="https://yewtu.be/channel/UCo3-vwbC-zxezr8vwyva47w">@tayebizem3749</a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Yo those are old Germanic runes</p><p>
+  <span title="Monday August 21, 2023">5 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    <div id="replies" class="pure-g">
+  <div class="pure-u-1-24"></div>
+  <div class="pure-u-23-24"><p><a href="javascript:void(0)" data-sub-text="Hide replies" data-inner-text="Show replies">Hide replies</a></p><div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/unnamed.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="channel-owner" href="https://yewtu.be/channel/UC_jtsGelurRAt-9Xq94uXwQ">@FrozenMermaid666&nbsp;<i class="icon ion ion-md-checkmark-circle"></i></a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Yea, I’m learning the Runes and Old Norse and Gothic and all other Germanic languages!</p><p>
+  <span title="Monday August 21, 2023">5 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div><div class="pure-g" style="width:100%">
+  <div class="channel-profile pure-u-4-24 pure-u-md-2-24">
+    <img loading="lazy" style="margin-right:1em;margin-top:1em;width:90%" src="pubarch_files/channels4_profile.jpg" alt="">
+  </div>
+  <div class="pure-u-20-24 pure-u-md-22-24">
+    <p>
+      <b>
+        <a class="" href="https://yewtu.be/channel/UChZKvJ5T4ufSXG9nuIif49w">@AccSwtch50</a>
+      </b>
+      
+      </p><p style="white-space:pre-wrap">Wow, <i>thanks</i> for your input, we wouldn't have known that otherwise. /s</p><p>
+  <span title="Monday August 21, 2023">5 months ago </span>
+  |  <i class="icon ion-ios-thumbs-up"></i> 0    </p>
+    
+  </div>
+</div></div></div>
+</div>
+  </div>
+</div></div>             <hr></div>
+</div>
+
+<script id="video_data" type="application/json">
+{
+  "id": "Ugkx4TMNulgBoaBt-mQsxGSw7p2umFkFW6lF",
+  "youtube_comments_text": "View YouTube comments",
+  "reddit_comments_text": "",
+  "reddit_permalink_text": "",
+  "comments_text": "View {commentCount} comments",
+  "hide_replies_text": "Hide replies",
+  "show_replies_text": "Show replies",
+  "params": {
+    "comments": [
+      "youtube"
+    ]
+  },
+  "preferences": {
+    "annotations": false,
+    "annotations_subscribed": false,
+    "autoplay": true,
+    "automatic_instance_redirect": false,
+    "captions": [
+      "",
+      "",
+      ""
+    ],
+    "comments": [
+      "youtube",
+      ""
+    ],
+    "continue": false,
+    "continue_autoplay": true,
+    "dark_mode": "",
+    "latest_only": false,
+    "listen": false,
+    "local": false,
+    "watch_history": false,
+    "vr_mode": true,
+    "show_nick": true,
+    "locale": "en-US",
+    "region": "US",
+    "max_results": 40,
+    "notifications_only": false,
+    "player_style": "invidious",
+    "quality": "hd720",
+    "quality_dash": "auto",
+    "default_home": "",
+    "feed_menu": [
+      "Trending",
+      "Subscriptions",
+      "Playlists"
+    ],
+    "related_videos": true,
+    "sort": "published",
+    "speed": 1.0,
+    "thin_mode": false,
+    "unseen_only": false,
+    "video_loop": false,
+    "extend_desc": false,
+    "volume": 100,
+    "save_player_pos": false
+  },
+  "base_url": "/api/v1/post/Ugkx4TMNulgBoaBt-mQsxGSw7p2umFkFW6lF/comments",
+  "ucid": "UC_jtsGelurRAt-9Xq94uXwQ"
+}
+</script>
+<script src="pubarch_files/comments.js"></script>
+<script src="pubarch_files/post.js"></script>
+
+            <footer>
+                <div class="pure-g">
+                    <div class="pure-u-1 pure-u-md-1-3">
+                        <span>
+                            <i class="icon ion-logo-github"></i>
+                        
+                            <a href="https://github.com/iv-org/invidious">Original source code</a>&nbsp;/
+                            <a href="https://github.com/unixfox/invidious-custom">Modified source code</a>
+                        
+                        </span>
+                        <span>
+                            <i class="icon ion-ios-paper"></i>
+                            <a href="https://github.com/iv-org/documentation">Documentation</a>
+                        </span>
+                    </div>
+
+                    <div class="pure-u-1 pure-u-md-1-3">
+                        <span>
+                            <a href="https://github.com/iv-org/invidious/blob/master/LICENSE">Released under the AGPLv3 on GitHub.</a>
+                        </span>
+                        <span>
+                            <i class="icon ion-logo-javascript"></i>
+                            <a rel="jslicense" href="https://yewtu.be/licenses">View JavaScript license information.</a>
+                        </span>
+                        <span>
+                            <i class="icon ion-ios-paper"></i>
+                            <a href="https://yewtu.be/privacy">View privacy policy.</a>
+                        </span>
+                    </div>
+
+                    <div class="pure-u-1 pure-u-md-1-3">
+                        <span>
+                            <i class="icon ion-ios-wallet"></i>
+                            <a href="https://yewtu.be/donate">Donate</a>
+                        </span>
+                        <span>Current version:  2024.01.21-4581c02 @ master</span>
+                    </div>
+                </div>
+            </footer>
+
+        </div>
+        <div class="pure-u-1 pure-u-md-2-24"></div>
+    </div>
+    <script src="pubarch_files/handlers.js"></script>
+    <script src="pubarch_files/themes.js"></script>
+    
+
+
+
+</body></html>
